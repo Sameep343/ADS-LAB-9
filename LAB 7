@@ -1,0 +1,70 @@
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+import pandas as pd
+
+df = pd.read_csv('/content/car_evaluation.csv')
+df.head()
+
+df.shape
+
+df.describe()
+
+df.info()
+
+df.isnull().sum()
+
+df['class'].value_counts()
+
+X=df.drop(['class'],axis=1)
+y=df['class']
+
+from sklearn.preprocessing import OneHotEncoder
+
+encoder = OneHotEncoder(sparse=False, drop='first')
+categorical_columns = X.select_dtypes(include=['object']).columns
+X_encoded = encoder.fit_transform(X[categorical_columns])
+column_names = encoder.get_feature_names_out(categorical_columns)
+X_encoded = pd.DataFrame(X_encoded, columns=column_names)
+X = pd.concat([X.drop(columns=categorical_columns), X_encoded], axis=1)
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Define your machine learning model
+model = RandomForestClassifier()
+
+# Define a grid of hyperparameters to search
+param_grid = {
+    'n_estimators': [50, 100, 200],
+    'max_depth': [None, 10, 20],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4]
+}
+
+# Create GridSearchCV object
+grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='accuracy')
+
+# Fit the grid search to the data
+grid_search.fit(X_train, y_train)
+
+# Get the best hyperparameters from the grid search
+best_params = grid_search.best_params_
+print("Best Hyperparameters:", best_params)
+
+# Train the model with the best hyperparameters on the entire training set
+best_model = RandomForestClassifier(**best_params)
+best_model.fit(X_train, y_train)
+
+# Evaluate the model's performance on the test set
+accuracy = best_model.score(X_test, y_test)
+print("Model Accuracy:", accuracy)
+
+import pickle
+
+model = RandomForestClassifier(n_estimators=100, max_depth=10)
+model.fit(X, y)
+
+# Save the trained model as a pickle file
+with open('trained_model.pkl', 'wb') as model_file:
+    pickle.dump(model, model_file)
